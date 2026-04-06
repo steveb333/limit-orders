@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Limit Order Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg0: #060a12; --bg1: #0a0e17; --bg2: #111827; --bg3: #151d2e;
+  --bg-hover: #1a2540; --border: #1e2a42; --border2: #2a3a5c;
+  --t1: #e2e8f0; --t2: #8899b4; --t3: #4a5c7a;
+  --green: #22c55e; --green-bg: rgba(34,197,94,.08);
+  --red: #ef4444; --red-bg: rgba(239,68,68,.08);
+  --amber: #f59e0b; --amber-bg: rgba(245,158,11,.08);
+  --blue: #3b82f6; --cyan: #06b6d4; --gold: #d4a017;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg1);color:var(--t1);font-family:'DM Sans',sans-serif;min-height:100vh}
+
+/* ── HEADER ── */
+.header{padding:20px 28px 14px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border)}
+.header h1{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+.header h1 .accent{color:var(--gold)}
+.header .sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3);margin-top:3px}
+.hdr-right{display:flex;align-items:center;gap:12px}
+
+/* ── STATUS BADGES ── */
+.badge{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2);background:var(--bg3);padding:5px 10px;border-radius:5px;border:1px solid var(--border)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--t3);flex-shrink:0}
+.dot.live{background:var(--green);animation:pulse 2s infinite}
+.dot.err{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:0;padding:0 28px;border-bottom:1px solid var(--border)}
+.tab{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;padding:12px 24px;cursor:pointer;color:var(--t3);border-bottom:2px solid transparent;transition:all .15s;letter-spacing:1px;text-transform:uppercase}
+.tab:hover{color:var(--t2)}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+/* ── ALERTS ── */
+.alerts{padding:10px 28px;display:flex;flex-wrap:wrap;gap:6px;min-height:10px}
+.pill{font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;border-radius:16px;display:inline-flex;align-items:center;gap:5px}
+.pill.hot{background:var(--red-bg);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.pill.warm{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.pill.above{background:var(--green-bg);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+
+/* ── CONFIG PANEL ── */
+.config{margin:12px 28px;padding:14px 18px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px}
+.config-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.config-row:last-child{margin-bottom:0}
+.config label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2);white-space:nowrap;min-width:120px}
+.config input[type=text],.config input[type=password]{flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--border);color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:12px;padding:7px 10px;border-radius:5px;outline:none}
+.config input:focus{border-color:var(--gold)}
+.config input::placeholder{color:var(--t3)}
+
+/* ── BUTTONS ── */
+.btn{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:7px 14px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--t2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{border-color:var(--gold);color:var(--t1)}
+.btn.gold{background:var(--gold);color:#000;border-color:var(--gold)}
+.btn.gold:hover{background:#e8b520}
+.btn.sm{padding:5px 10px;font-size:9px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;padding:8px 28px}
+
+/* ── SUMMARY ── */
+.summary{display:flex;gap:10px;padding:10px 28px;flex-wrap:wrap}
+.scard{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:10px 16px;min-width:120px}
+.scard .sl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:1px}
+.scard .sv{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;margin-top:3px}
+
+/* ── TABLE ── */
+.twrap{padding:0 28px 28px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--t3);padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;position:sticky;top:0;background:var(--bg1);z-index:2}
+thead th:hover{color:var(--t2)}
+thead th.asc::after{content:' ▲';font-size:8px}
+thead th.desc::after{content:' ▼';font-size:8px}
+tbody td{padding:8px 12px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:12px;white-space:nowrap;vertical-align:middle}
+tbody tr:hover{background:var(--bg-hover)}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* Editable cells */
+td.editable{cursor:pointer;position:relative}
+td.editable:hover{background:rgba(212,160,23,.06)}
+td.editable input{width:100%;background:var(--bg2);border:1px solid var(--gold);color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:12px;padding:4px 6px;border-radius:3px;outline:none}
+td.note-cell{max-width:200px;white-space:normal;word-wrap:break-word}
+td.note-cell input{width:100%;min-width:120px;background:var(--bg2);border:1px solid var(--gold);color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 6px;border-radius:3px;outline:none}
+.note-text{color:var(--t3);font-size:11px;cursor:pointer;font-style:italic}
+.note-text.has-note{color:var(--t2);font-style:normal}
+
+/* Colors */
+.up{color:var(--green)}.down{color:var(--red)}.flat{color:var(--t3)}
+.ticker-name{color:var(--t1);font-weight:600;font-size:13px}
+
+/* ── LOADING ── */
+#loading{position:fixed;inset:0;background:var(--bg1);display:flex;align-items:center;justify-content:center;z-index:999;transition:opacity .3s}
+#loading.hide{opacity:0;pointer-events:none}
+#loading span{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--gold)}
+
+/* ── GIST SYNC INDICATOR ── */
+.sync-status{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3);padding:0 28px 4px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .header{padding:14px 16px 10px;flex-direction:column;gap:8px}
+  .tabs{padding:0 16px}.alerts{padding:8px 16px}
+  .config{margin:8px 16px}.btn-row{padding:6px 16px}
+  .summary{padding:8px 16px}.twrap{padding:0 16px 16px}
+  table{font-size:11px}
+  thead th,tbody td{padding:6px 8px}
+}
+</style>
+</head>
+<body>
+
+<div id="loading"><span>Loading Command Center...</span></div>
+
+<div class="header">
+  <div>
+    <h1>LIMIT ORDER <span class="accent">COMMAND CENTER</span></h1>
+    <div class="sub" id="lastUpdate">Waiting for data...</div>
+  </div>
+  <div class="hdr-right">
+    <div class="badge"><div class="dot" id="statusDot"></div><span id="statusText">Initializing</span></div>
+    <button class="btn" onclick="refreshAll()">↻ Refresh</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="bdc" onclick="switchTab('bdc')">BDC Limit Orders</div>
+  <div class="tab" data-tab="natres" onclick="switchTab('natres')">Natural Resources</div>
+  <div class="tab" data-tab="config" onclick="switchTab('config')">⚙ Settings</div>
+</div>
+
+<!-- CONFIG TAB -->
+<div id="panel-config" class="tab-panel" style="display:none">
+  <div class="config">
+    <div class="config-row">
+      <label>Finnhub API Key</label>
+      <input type="password" id="finnhubKey" placeholder="Enter Finnhub key (BDC prices)">
+      <a href="https://finnhub.io/register" target="_blank" class="btn sm">Get Free Key</a>
+    </div>
+    <div class="config-row">
+      <label>Twelve Data Key</label>
+      <input type="password" id="twelveKey" placeholder="Enter Twelve Data key (Natural Resources prices)">
+      <a href="https://twelvedata.com/register" target="_blank" class="btn sm">Get Free Key</a>
+    </div>
+    <div class="config-row">
+      <label>GitHub Gist Token</label>
+      <input type="password" id="gistToken" placeholder="Enter GitHub personal access token (Gist scope)">
+      <a href="https://github.com/settings/tokens/new?scopes=gist&description=LimitOrderDashboard" target="_blank" class="btn sm">Create Token</a>
+    </div>
+    <div class="config-row">
+      <label>Gist ID</label>
+      <input type="text" id="gistId" placeholder="Leave blank to auto-create on first save">
+    </div>
+    <div class="config-row" style="justify-content:flex-end;gap:10px">
+      <button class="btn" onclick="saveConfig()">Save Config</button>
+      <button class="btn gold" onclick="testSync()">Test Gist Sync</button>
+    </div>
+    <div class="config-row">
+      <label>Import Data</label>
+      <input type="file" id="importFile" accept=".json,.csv" style="color:var(--t2);font-size:11px">
+      <button class="btn" onclick="importData()">Import</button>
+      <button class="btn" onclick="exportData()">Export JSON</button>
+    </div>
+  </div>
+</div>
+
+<!-- BDC TAB -->
+<div id="panel-bdc" class="tab-panel">
+  <div class="alerts" id="alerts-bdc"></div>
+  <div class="summary" id="summary-bdc"></div>
+  <div class="btn-row">
+    <button class="btn" onclick="addRow('bdc')">+ Add Ticker</button>
+    <button class="btn" onclick="removeRow('bdc')">− Remove Last</button>
+  </div>
+  <div class="twrap"><table id="table-bdc">
+    <thead><tr>
+      <th data-col="ticker">Ticker</th>
+      <th data-col="price">Price</th>
+      <th data-col="limit">Limit</th>
+      <th data-col="target">Target</th>
+      <th data-col="limitDiff">Limit Diff</th>
+      <th data-col="upside">Upside</th>
+      <th data-col="note">Notes</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table></div>
+</div>
+
+<!-- NATURAL RESOURCES TAB -->
+<div id="panel-natres" class="tab-panel" style="display:none">
+  <div class="alerts" id="alerts-natres"></div>
+  <div class="summary" id="summary-natres"></div>
+  <div class="btn-row">
+    <button class="btn" onclick="addRow('natres')">+ Add Ticker</button>
+    <button class="btn" onclick="removeRow('natres')">− Remove Last</button>
+  </div>
+  <div class="twrap"><table id="table-natres">
+    <thead><tr>
+      <th data-col="ticker">Ticker</th>
+      <th data-col="price">Price</th>
+      <th data-col="limit">Limit</th>
+      <th data-col="limitDiff">Limit Diff</th>
+      <th data-col="note">Notes</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table></div>
+</div>
+
+<div class="sync-status" id="syncStatus"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+//  DATA STORE
+// ══════════════════════════════════════════════════════════════════
+
+const DEFAULT_BDC = [
+  { ticker:"TSLX", limit:17.50, target:21.00, note:"" },
+  { ticker:"HTGC", limit:13.64, target:18.50, note:"" },
+  { ticker:"ARCC", limit:17.43, target:21.00, note:"" },
+  { ticker:"BXSL", limit:23.33, target:28.50, note:"" },
+  { ticker:"MSDL", limit:14.23, target:16.50, note:"" },
+  { ticker:"OBDC", limit:10.93, target:13.25, note:"" },
+  { ticker:"CGBD", limit:10.24, target:13.25, note:"" },
+  { ticker:"GLAD", limit:16.51, target:22.00, note:"" },
+  { ticker:"FDUS", limit:16.33, target:20.50, note:"" },
+  { ticker:"TRIN", limit:12.79, target:15.75, note:"" },
+  { ticker:"CSWC", limit:17.62, target:23.00, note:"" },
+  { ticker:"MAIN", limit:45.73, target:54.00, note:"" },
+  { ticker:"GBDC", limit:0,     target:14.00, note:"" },
+  { ticker:"NCDL", limit:0,     target:14.00, note:"" },
+  { ticker:"PFLT", limit:0,     target:10.00, note:"" },
+  { ticker:"GAIN", limit:11.34, target:14.00, note:"watchlist" },
+];
+
+const DEFAULT_NATRES = [
+  { ticker:"ARREF", limit:3.60, note:"no current order" },
+  { ticker:"AYASF", limit:10.50, note:"" },
+  { ticker:"BHP",   limit:59.00, note:"" },
+  { ticker:"BYAGF", limit:0.60, note:"" },
+  { ticker:"CNQ",   limit:36.50, note:"" },
+  { ticker:"COAL",  limit:22.75, note:"" },
+  { ticker:"COP.U", limit:8.35, note:"" },
+  { ticker:"CTTZF", limit:0.32, note:"" },
+  { ticker:"CVX",   limit:155.00, note:"no current order" },
+  { ticker:"DVN",   limit:41.00, note:"" },
+  { ticker:"EQX",   limit:12.00, note:"" },
+  { ticker:"GLGDF", limit:1.65, note:"no current order" },
+  { ticker:"GLNCY", limit:11.50, note:"" },
+  { ticker:"GMINF", limit:24.00, note:"" },
+  { ticker:"IVPAF", limit:8.50, note:"no current order" },
+  { ticker:"METOF", limit:0.09, note:"" },
+  { ticker:"MGMNF", limit:1.58, note:"no current order" },
+  { ticker:"MUNMF", limit:0.22, note:"" },
+  { ticker:"NRYCF", limit:0.60, note:"" },
+  { ticker:"PALL",  limit:114.00, note:"no current order" },
+  { ticker:"PHYS",  limit:31.00, note:"" },
+  { ticker:"PPLT",  limit:155.01, note:"" },
+  { ticker:"PSLV",  limit:18.50, note:"" },
+  { ticker:"REMX",  limit:67.51, note:"" },
+  { ticker:"RGLD",  limit:209.00, note:"" },
+  { ticker:"RIOFF", limit:1.55, note:"" },
+  { ticker:"SBSW",  limit:11.56, note:"no current order" },
+  { ticker:"SILJ",  limit:22.50, note:"" },
+  { ticker:"SRUUF", limit:16.51, note:"" },
+  { ticker:"TLOFF", limit:4.63, note:"no current order" },
+  { ticker:"UEC",   limit:9.51, note:"" },
+  { ticker:"URNJ",  limit:23.75, note:"" },
+  { ticker:"URNM",  limit:53.00, note:"" },
+  { ticker:"XLE",   limit:49.10, note:"" },
+  { ticker:"XOM",   limit:124.23, note:"" },
+];
+
+let DATA = { bdc: [], natres: [] };
+let PRICES = { bdc: {}, natres: {} };
+let SORT = { bdc: { col: null, dir: 'asc' }, natres: { col: null, dir: 'asc' } };
+let activeTab = 'bdc';
+let gistSyncTimer = null;
+
+// ══════════════════════════════════════════════════════════════════
+//  CONFIG / LOCAL STORAGE
+// ══════════════════════════════════════════════════════════════════
+
+function lsGet(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }
+function lsSet(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }
+
+function loadConfig() {
+  return {
+    finnhubKey: lsGet('cfg_finnhub') || '',
+    twelveKey:  lsGet('cfg_twelve') || '',
+    gistToken:  lsGet('cfg_gist_token') || '',
+    gistId:     lsGet('cfg_gist_id') || '',
+  };
+}
+
+function saveConfig() {
+  lsSet('cfg_finnhub',   document.getElementById('finnhubKey').value.trim());
+  lsSet('cfg_twelve',    document.getElementById('twelveKey').value.trim());
+  lsSet('cfg_gist_token',document.getElementById('gistToken').value.trim());
+  lsSet('cfg_gist_id',   document.getElementById('gistId').value.trim());
+  showSync('Config saved ✓');
+  // Migrate old finnhub key if present
+  const oldKey = lsGet('finnhub_api_key');
+  if (oldKey && !document.getElementById('finnhubKey').value.trim()) {
+    lsSet('cfg_finnhub', oldKey);
+    document.getElementById('finnhubKey').value = oldKey;
+  }
+}
+
+function populateConfigFields() {
+  const c = loadConfig();
+  document.getElementById('finnhubKey').value = c.finnhubKey;
+  document.getElementById('twelveKey').value = c.twelveKey;
+  document.getElementById('gistToken').value = c.gistToken;
+  document.getElementById('gistId').value = c.gistId;
+  // Migrate old key
+  if (!c.finnhubKey) {
+    const old = lsGet('finnhub_api_key');
+    if (old) { document.getElementById('finnhubKey').value = old; lsSet('cfg_finnhub', old); }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  GITHUB GIST SYNC
+// ══════════════════════════════════════════════════════════════════
+
+async function syncToGist() {
+  const cfg = loadConfig();
+  if (!cfg.gistToken) return;
+
+  const payload = JSON.stringify({ bdc: DATA.bdc, natres: DATA.natres }, null, 2);
+  const files = { 'limit_orders.json': { content: payload } };
+
+  try {
+    let res;
+    if (cfg.gistId) {
+      // Update existing gist
+      res = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `token ${cfg.gistToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files })
+      });
+    } else {
+      // Create new gist
+      res = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers: { 'Authorization': `token ${cfg.gistToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: 'Limit Order Command Center Data', public: false, files })
+      });
+    }
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!cfg.gistId && data.id) {
+      lsSet('cfg_gist_id', data.id);
+      document.getElementById('gistId').value = data.id;
+    }
+    showSync('Synced to Gist ✓ ' + new Date().toLocaleTimeString());
+  } catch (e) {
+    showSync('Gist sync failed: ' + e.message, true);
+  }
+}
+
+async function loadFromGist() {
+  const cfg = loadConfig();
+  if (!cfg.gistToken || !cfg.gistId) return false;
+
+  try {
+    const res = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
+      headers: { 'Authorization': `token ${cfg.gistToken}` }
+    });
+    if (!res.ok) return false;
+    const gist = await res.json();
+    const file = gist.files['limit_orders.json'];
+    if (!file) return false;
+    const parsed = JSON.parse(file.content);
+    if (parsed.bdc && Array.isArray(parsed.bdc)) DATA.bdc = parsed.bdc;
+    if (parsed.natres && Array.isArray(parsed.natres)) DATA.natres = parsed.natres;
+    showSync('Loaded from Gist ✓');
+    return true;
+  } catch (e) {
+    showSync('Gist load failed: ' + e.message, true);
+    return false;
+  }
+}
+
+async function testSync() {
+  saveConfig();
+  await syncToGist();
+}
+
+function debouncedSync() {
+  if (gistSyncTimer) clearTimeout(gistSyncTimer);
+  gistSyncTimer = setTimeout(syncToGist, 3000); // 3s debounce
+}
+
+function showSync(msg, isError) {
+  const el = document.getElementById('syncStatus');
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--red)' : 'var(--t3)';
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PRICE FETCHING
+// ══════════════════════════════════════════════════════════════════
+
+async function fetchBdcPrices() {
+  const cfg = loadConfig();
+  if (!cfg.finnhubKey) return;
+  const tickers = DATA.bdc.map(r => r.ticker);
+  const promises = tickers.map(t =>
+    fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t)}&token=${cfg.finnhubKey}`)
+      .then(r => r.json())
+      .then(d => { if (d.c) PRICES.bdc[t] = d.c; })
+      .catch(() => {})
+  );
+  await Promise.all(promises);
+}
+
+async function fetchNatresPrices() {
+  const cfg = loadConfig();
+  if (!cfg.twelveKey) return;
+  const tickers = DATA.natres.map(r => r.ticker);
+  // Twelve Data allows batch — up to 8 per call on free tier
+  const batchSize = 8;
+  for (let i = 0; i < tickers.length; i += batchSize) {
+    const batch = tickers.slice(i, i + batchSize);
+    const symbols = batch.join(',');
+    try {
+      const res = await fetch(`https://api.twelvedata.com/price?symbol=${encodeURIComponent(symbols)}&apikey=${cfg.twelveKey}`);
+      const data = await res.json();
+      if (batch.length === 1) {
+        // Single symbol returns { price: "..." }
+        if (data.price) PRICES.natres[batch[0]] = parseFloat(data.price);
+      } else {
+        // Multiple returns { TICKER: { price: "..." }, ... }
+        for (const sym of batch) {
+          if (data[sym] && data[sym].price) {
+            PRICES.natres[sym] = parseFloat(data[sym].price);
+          }
+        }
+      }
+    } catch (e) { console.error('Twelve Data batch error:', e); }
+    // Small delay between batches to respect rate limits
+    if (i + batchSize < tickers.length) await new Promise(r => setTimeout(r, 500));
+  }
+}
+
+async function refreshAll() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'dot'; txt.textContent = 'Refreshing...';
+
+  try {
+    await Promise.all([fetchBdcPrices(), fetchNatresPrices()]);
+    dot.className = 'dot live'; txt.textContent = 'Live';
+    renderTab(activeTab);
+    const now = new Date();
+    document.getElementById('lastUpdate').textContent =
+      `Updated ${now.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', second:'2-digit', hour12:true })} ET`;
+  } catch (e) {
+    dot.className = 'dot err'; txt.textContent = 'Error';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════════════════════════
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+  document.getElementById('panel-' + tab).style.display = '';
+  if (tab !== 'config') renderTab(tab);
+}
+
+function renderTab(tab) {
+  const rows = DATA[tab];
+  const prices = PRICES[tab];
+  const tbody = document.querySelector(`#table-${tab} tbody`);
+  const alertsEl = document.getElementById(`alerts-${tab}`);
+  const summaryEl = document.getElementById(`summary-${tab}`);
+
+  // Sort
+  const s = SORT[tab];
+  let sorted = [...rows];
+  if (s.col) {
+    sorted.sort((a, b) => {
+      let va = getSortVal(a, s.col, prices, tab);
+      let vb = getSortVal(b, s.col, prices, tab);
+      if (typeof va === 'string') return s.dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+      if (isNaN(va)) va = -Infinity; if (isNaN(vb)) vb = -Infinity;
+      return s.dir === 'asc' ? va - vb : vb - va;
+    });
+  }
+
+  // Alerts
+  const hot = [], warm = [], above = [];
+  for (const r of rows) {
+    const p = prices[r.ticker];
+    if (!p || !r.limit) continue;
+    const diff = (p - r.limit) / r.limit;
+    if (diff <= 0) hot.push(r.ticker);
+    else if (diff < 0.03) warm.push(r.ticker);
+  }
+  // Above target
+  if (tab === 'bdc') {
+    for (const r of rows) {
+      const p = prices[r.ticker];
+      if (p && r.target && p >= r.target) above.push(r.ticker);
+    }
+  }
+
+  let alertsHtml = '';
+  hot.forEach(t => alertsHtml += `<span class="pill hot">● ${t} AT/BELOW LIMIT</span>`);
+  warm.forEach(t => alertsHtml += `<span class="pill warm">● ${t} within 3%</span>`);
+  above.forEach(t => alertsHtml += `<span class="pill above">▲ ${t} above target</span>`);
+  alertsEl.innerHTML = alertsHtml;
+
+  // Summary
+  const totalTickers = rows.length;
+  const priced = rows.filter(r => prices[r.ticker]).length;
+  const atLimit = hot.length;
+  const nearLimit = warm.length;
+  summaryEl.innerHTML = `
+    <div class="scard"><div class="sl">Tickers</div><div class="sv">${totalTickers}</div></div>
+    <div class="scard"><div class="sl">Priced</div><div class="sv">${priced}/${totalTickers}</div></div>
+    <div class="scard"><div class="sl">At/Below Limit</div><div class="sv" style="color:${atLimit?'var(--red)':'var(--t1)'}">${atLimit}</div></div>
+    <div class="scard"><div class="sl">Within 3%</div><div class="sv" style="color:${nearLimit?'var(--amber)':'var(--t1)'}">${nearLimit}</div></div>
+  `;
+
+  // Table
+  let html = '';
+  for (let i = 0; i < sorted.length; i++) {
+    const r = sorted[i];
+    const idx = rows.indexOf(r); // original index for editing
+    const p = prices[r.ticker] || null;
+    const limit = r.limit || 0;
+    const limitDiff = (p && limit) ? ((p - limit) / limit * 100) : null;
+    const limitDiffStr = limitDiff !== null ? (limitDiff >= 0 ? '+' : '') + limitDiff.toFixed(1) + '%' : '—';
+    const ldClass = limitDiff !== null ? (limitDiff <= 0 ? 'down' : limitDiff < 3 ? 'up' : 'flat') : 'flat';
+
+    // Row highlight if at or below limit
+    const rowStyle = (p && limit && p <= limit) ? 'background:var(--red-bg)' : '';
+
+    if (tab === 'bdc') {
+      const target = r.target || 0;
+      const upside = (p && target) ? ((target - p) / p * 100) : null;
+      const upsideStr = upside !== null ? (upside >= 0 ? '+' : '') + upside.toFixed(1) + '%' : '—';
+      const uClass = upside !== null ? (upside > 0 ? 'up' : 'down') : 'flat';
+
+      html += `<tr style="${rowStyle}">
+        <td class="ticker-name">${r.ticker}</td>
+        <td>${p ? '$' + fmtP(p) : '<span class="flat">—</span>'}</td>
+        <td class="editable" onclick="startEdit(this,'bdc',${idx},'limit')">${limit ? '$' + fmtP(limit) : '—'}</td>
+        <td class="editable" onclick="startEdit(this,'bdc',${idx},'target')">${target ? '$' + fmtP(target) : '—'}</td>
+        <td class="${ldClass}">${limitDiffStr}</td>
+        <td class="${uClass}">${upsideStr}</td>
+        <td class="note-cell editable" onclick="startEditNote(this,'bdc',${idx})">${noteSpan(r.note)}</td>
+      </tr>`;
+    } else {
+      html += `<tr style="${rowStyle}">
+        <td class="ticker-name">${r.ticker}</td>
+        <td>${p ? '$' + fmtP(p) : '<span class="flat">—</span>'}</td>
+        <td class="editable" onclick="startEdit(this,'natres',${idx},'limit')">${limit ? '$' + fmtP(limit) : '—'}</td>
+        <td class="${ldClass}">${limitDiffStr}</td>
+        <td class="note-cell editable" onclick="startEditNote(this,'natres',${idx})">${noteSpan(r.note)}</td>
+      </tr>`;
+    }
+  }
+  tbody.innerHTML = html;
+
+  // Column sort listeners
+  document.querySelectorAll(`#table-${tab} thead th`).forEach(th => {
+    th.onclick = () => {
+      const col = th.dataset.col;
+      if (!col) return;
+      if (s.col === col) s.dir = s.dir === 'asc' ? 'desc' : 'asc';
+      else { s.col = col; s.dir = 'asc'; }
+      document.querySelectorAll(`#table-${tab} thead th`).forEach(t => t.classList.remove('asc','desc'));
+      th.classList.add(s.dir);
+      renderTab(tab);
+    };
+  });
+}
+
+function getSortVal(row, col, prices, tab) {
+  const p = prices[row.ticker] || 0;
+  switch(col) {
+    case 'ticker': return row.ticker;
+    case 'price': return p;
+    case 'limit': return row.limit || 0;
+    case 'target': return row.target || 0;
+    case 'limitDiff': return (p && row.limit) ? (p - row.limit) / row.limit : -999;
+    case 'upside': return (p && row.target) ? (row.target - p) / p : -999;
+    case 'note': return row.note || '';
+    default: return 0;
+  }
+}
+
+function fmtP(v) {
+  if (v >= 100) return v.toFixed(2);
+  if (v >= 1) return v.toFixed(2);
+  return v.toFixed(v < 0.1 ? 4 : 3);
+}
+
+function noteSpan(n) {
+  return n ? `<span class="note-text has-note">${escHtml(n)}</span>`
+           : `<span class="note-text">click to add note</span>`;
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ══════════════════════════════════════════════════════════════════
+//  INLINE EDITING
+// ══════════════════════════════════════════════════════════════════
+
+function startEdit(td, tab, idx, field) {
+  if (td.querySelector('input')) return;
+  const val = DATA[tab][idx][field] || '';
+  const orig = td.innerHTML;
+  td.innerHTML = `<input type="text" value="${val}" autofocus>`;
+  const input = td.querySelector('input');
+  input.focus();
+  input.select();
+
+  const commit = () => {
+    const nv = parseFloat(input.value);
+    if (!isNaN(nv) && nv >= 0) {
+      DATA[tab][idx][field] = nv;
+      saveLocal();
+      debouncedSync();
+    }
+    renderTab(tab);
+  };
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commit();
+    if (e.key === 'Escape') renderTab(tab);
+  });
+}
+
+function startEditNote(td, tab, idx) {
+  if (td.querySelector('input')) return;
+  const val = DATA[tab][idx].note || '';
+  td.innerHTML = `<input type="text" value="${escHtml(val)}" placeholder="Add note..." autofocus>`;
+  const input = td.querySelector('input');
+  input.focus();
+
+  const commit = () => {
+    DATA[tab][idx].note = input.value.trim();
+    saveLocal();
+    debouncedSync();
+    renderTab(tab);
+  };
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commit();
+    if (e.key === 'Escape') renderTab(tab);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ADD / REMOVE ROWS
+// ══════════════════════════════════════════════════════════════════
+
+function addRow(tab) {
+  const ticker = prompt('Enter ticker symbol:');
+  if (!ticker) return;
+  const limit = parseFloat(prompt('Limit order price (0 if none):') || '0');
+  if (tab === 'bdc') {
+    const target = parseFloat(prompt('Target price (0 if none):') || '0');
+    DATA.bdc.push({ ticker: ticker.toUpperCase().trim(), limit, target, note: '' });
+  } else {
+    DATA.natres.push({ ticker: ticker.toUpperCase().trim(), limit, note: '' });
+  }
+  saveLocal();
+  debouncedSync();
+  renderTab(tab);
+}
+
+function removeRow(tab) {
+  if (!DATA[tab].length) return;
+  const last = DATA[tab][DATA[tab].length - 1];
+  if (confirm(`Remove ${last.ticker}?`)) {
+    DATA[tab].pop();
+    saveLocal();
+    debouncedSync();
+    renderTab(tab);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  IMPORT / EXPORT
+// ══════════════════════════════════════════════════════════════════
+
+function exportData() {
+  const blob = new Blob([JSON.stringify({ bdc: DATA.bdc, natres: DATA.natres }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'limit_orders_backup.json';
+  a.click();
+}
+
+function importData() {
+  const file = document.getElementById('importFile').files[0];
+  if (!file) { alert('Select a file first'); return; }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    if (file.name.endsWith('.json')) {
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed.bdc) DATA.bdc = parsed.bdc;
+        if (parsed.natres) DATA.natres = parsed.natres;
+        saveLocal();
+        debouncedSync();
+        renderTab(activeTab);
+        showSync('Import successful ✓');
+      } catch(err) { alert('Invalid JSON: ' + err.message); }
+    } else if (file.name.endsWith('.csv')) {
+      importCsv(text);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function importCsv(text) {
+  const lines = text.trim().split('\n').map(l => l.replace(/\r/g, ''));
+  if (lines.length < 2) { alert('CSV appears empty'); return; }
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+
+  // Try to map columns
+  const tickerCol = headers.findIndex(h => h.includes('tick'));
+  const limitCol = headers.findIndex(h => h.includes('limit'));
+  const targetCol = headers.findIndex(h => h.includes('target'));
+  const noteCol = headers.findIndex(h => h.includes('note') || h.includes('column'));
+
+  if (tickerCol === -1) { alert('Cannot find Ticker column in CSV'); return; }
+
+  const hasTarget = targetCol !== -1;
+  const tab = hasTarget ? 'bdc' : 'natres';
+  const result = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',').map(c => c.trim());
+    const ticker = cols[tickerCol];
+    if (!ticker || ticker === '#N/A') continue;
+    const row = { ticker: ticker.toUpperCase(), limit: 0, note: '' };
+    if (limitCol !== -1) row.limit = parseFloat(cols[limitCol]) || 0;
+    if (hasTarget) row.target = parseFloat(cols[targetCol]) || 0;
+    if (noteCol !== -1) row.note = cols[noteCol] || '';
+    result.push(row);
+  }
+
+  if (result.length) {
+    DATA[tab] = result;
+    saveLocal();
+    debouncedSync();
+    switchTab(tab);
+    showSync(`Imported ${result.length} rows into ${tab.toUpperCase()} ✓`);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  LOCAL PERSISTENCE (fallback when no Gist)
+// ══════════════════════════════════════════════════════════════════
+
+function saveLocal() {
+  lsSet('data_bdc', JSON.stringify(DATA.bdc));
+  lsSet('data_natres', JSON.stringify(DATA.natres));
+}
+
+function loadLocal() {
+  try {
+    const bdc = lsGet('data_bdc');
+    const natres = lsGet('data_natres');
+    if (bdc) DATA.bdc = JSON.parse(bdc);
+    if (natres) DATA.natres = JSON.parse(natres);
+    return !!(bdc || natres);
+  } catch (e) { return false; }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════════
+
+async function init() {
+  populateConfigFields();
+
+  // Try loading data: Gist first, then localStorage, then defaults
+  const fromGist = await loadFromGist();
+  if (!fromGist) {
+    const fromLocal = loadLocal();
+    if (!fromLocal) {
+      DATA.bdc = JSON.parse(JSON.stringify(DEFAULT_BDC));
+      DATA.natres = JSON.parse(JSON.stringify(DEFAULT_NATRES));
+      saveLocal();
+    }
+  }
+
+  // Render first with no prices
+  renderTab('bdc');
+
+  // Then fetch prices
+  await refreshAll();
+
+  // Hide loading
+  document.getElementById('loading').classList.add('hide');
+
+  // Auto-refresh every 5 minutes
+  setInterval(refreshAll, 5 * 60 * 1000);
+}
+
+init();
+</script>
+</body>
+</html>
