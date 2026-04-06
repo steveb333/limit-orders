@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Limit Order Command Center</title>
+<title>Limit Orders</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -20,15 +20,15 @@ body{background:var(--bg1);color:var(--t1);font-family:'DM Sans',sans-serif;min-
 
 /* ── HEADER ── */
 .header{padding:20px 28px 14px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border)}
-.header h1{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
-.header h1 .accent{color:var(--gold)}
+.header h1{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+.header h1 .accent{color:var(--green)}
 .header .sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3);margin-top:3px}
 .hdr-right{display:flex;align-items:center;gap:12px}
-
-/* ── STATUS BADGES ── */
-.badge{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2);background:var(--bg3);padding:5px 10px;border-radius:5px;border:1px solid var(--border)}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--t3);flex-shrink:0}
+.market-badge{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--t3);flex-shrink:0}
 .dot.live{background:var(--green);animation:pulse 2s infinite}
+.dot.after{background:var(--amber);animation:pulse 3s infinite}
+.dot.closed{background:var(--t3)}
 .dot.err{background:var(--red)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
@@ -41,9 +41,9 @@ body{background:var(--bg1);color:var(--t1);font-family:'DM Sans',sans-serif;min-
 /* ── ALERTS ── */
 .alerts{padding:10px 28px;display:flex;flex-wrap:wrap;gap:6px;min-height:10px}
 .pill{font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;border-radius:16px;display:inline-flex;align-items:center;gap:5px}
-.pill.hot{background:var(--red-bg);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.pill.hot{background:var(--green-bg);color:var(--green);border:1px solid rgba(34,197,94,.2)}
 .pill.warm{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
-.pill.above{background:var(--green-bg);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.pill.near-target{background:rgba(59,130,246,.08);color:var(--blue);border:1px solid rgba(59,130,246,.2)}
 
 /* ── CONFIG PANEL ── */
 .config{margin:12px 28px;padding:14px 18px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px}
@@ -61,12 +61,15 @@ body{background:var(--bg1);color:var(--t1);font-family:'DM Sans',sans-serif;min-
 .btn.gold:hover{background:#e8b520}
 .btn.sm{padding:5px 10px;font-size:9px}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap;padding:8px 28px}
+.btn-del{background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:3px;transition:all .15s;font-family:'JetBrains Mono',monospace}
+.btn-del:hover{color:var(--red);background:var(--red-bg)}
 
 /* ── SUMMARY ── */
 .summary{display:flex;gap:10px;padding:10px 28px;flex-wrap:wrap}
-.scard{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:10px 16px;min-width:120px}
+.scard{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:12px 18px;min-width:150px}
 .scard .sl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:1px}
-.scard .sv{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;margin-top:3px}
+.scard .sv{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;margin-top:3px}
+.scard .sd{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3);margin-top:2px}
 
 /* ── TABLE ── */
 .twrap{padding:0 28px 28px;overflow-x:auto}
@@ -75,32 +78,38 @@ thead th{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;te
 thead th:hover{color:var(--t2)}
 thead th.asc::after{content:' ▲';font-size:8px}
 thead th.desc::after{content:' ▼';font-size:8px}
+thead th:last-child{cursor:default}
 tbody td{padding:8px 12px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:12px;white-space:nowrap;vertical-align:middle}
 tbody tr:hover{background:var(--bg-hover)}
-.mono{font-family:'JetBrains Mono',monospace}
 
 /* Editable cells */
 td.editable{cursor:pointer;position:relative}
 td.editable:hover{background:rgba(212,160,23,.06)}
 td.editable input{width:100%;background:var(--bg2);border:1px solid var(--gold);color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:12px;padding:4px 6px;border-radius:3px;outline:none}
-td.note-cell{max-width:200px;white-space:normal;word-wrap:break-word}
+td.note-cell{max-width:220px;white-space:normal;word-wrap:break-word}
 td.note-cell input{width:100%;min-width:120px;background:var(--bg2);border:1px solid var(--gold);color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 6px;border-radius:3px;outline:none}
 .note-text{color:var(--t3);font-size:11px;cursor:pointer;font-style:italic}
 .note-text.has-note{color:var(--t2);font-style:normal}
 
-/* Colors */
-.up{color:var(--green)}.down{color:var(--red)}.flat{color:var(--t3)}
+/* Colors for limit diff */
+.at-limit{color:var(--green);font-weight:600}
+.near-limit{color:var(--amber)}
+.far-limit{color:var(--t2)}
+.no-data{color:var(--t3)}
+.up{color:var(--green)}.down{color:var(--red)}
 .ticker-name{color:var(--t1);font-weight:600;font-size:13px}
+
+/* Row highlight */
+tr.row-at-limit{background:var(--green-bg)}
+tr.row-near-limit{background:var(--amber-bg)}
 
 /* ── LOADING ── */
 #loading{position:fixed;inset:0;background:var(--bg1);display:flex;align-items:center;justify-content:center;z-index:999;transition:opacity .3s}
 #loading.hide{opacity:0;pointer-events:none}
 #loading span{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--gold)}
 
-/* ── GIST SYNC INDICATOR ── */
 .sync-status{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3);padding:0 28px 4px}
 
-/* ── RESPONSIVE ── */
 @media(max-width:768px){
   .header{padding:14px 16px 10px;flex-direction:column;gap:8px}
   .tabs{padding:0 16px}.alerts{padding:8px 16px}
@@ -113,15 +122,16 @@ td.note-cell input{width:100%;min-width:120px;background:var(--bg2);border:1px s
 </head>
 <body>
 
-<div id="loading"><span>Loading Command Center...</span></div>
+<div id="loading"><span>Loading Limit Orders...</span></div>
 
 <div class="header">
   <div>
-    <h1>LIMIT ORDER <span class="accent">COMMAND CENTER</span></h1>
-    <div class="sub" id="lastUpdate">Waiting for data...</div>
+    <h1>BDC <span class="accent">LIMIT ORDERS</span></h1>
+    <div class="sub" id="lastUpdate">Last updated: waiting for data...</div>
   </div>
   <div class="hdr-right">
-    <div class="badge"><div class="dot" id="statusDot"></div><span id="statusText">Initializing</span></div>
+    <div class="market-badge"><div class="dot" id="mktDot"></div><span id="mktText">Loading</span></div>
+    <button class="btn" onclick="resetAllData()">↺ Reset</button>
     <button class="btn" onclick="refreshAll()">↻ Refresh</button>
   </div>
 </div>
@@ -137,18 +147,18 @@ td.note-cell input{width:100%;min-width:120px;background:var(--bg2);border:1px s
   <div class="config">
     <div class="config-row">
       <label>Finnhub API Key</label>
-      <input type="password" id="finnhubKey" placeholder="Enter Finnhub key (BDC prices)">
+      <input type="password" id="finnhubKey" placeholder="Enter Finnhub key (primary price source)">
       <a href="https://finnhub.io/register" target="_blank" class="btn sm">Get Free Key</a>
     </div>
     <div class="config-row">
       <label>Twelve Data Key</label>
-      <input type="password" id="twelveKey" placeholder="Enter Twelve Data key (Natural Resources prices)">
+      <input type="password" id="twelveKey" placeholder="Enter Twelve Data key (fallback for select tickers)">
       <a href="https://twelvedata.com/register" target="_blank" class="btn sm">Get Free Key</a>
     </div>
     <div class="config-row">
       <label>GitHub Gist Token</label>
       <input type="password" id="gistToken" placeholder="Enter GitHub personal access token (Gist scope)">
-      <a href="https://github.com/settings/tokens/new?scopes=gist&description=LimitOrderDashboard" target="_blank" class="btn sm">Create Token</a>
+      <a href="https://github.com/settings/tokens/new?scopes=gist&description=LimitOrders" target="_blank" class="btn sm">Create Token</a>
     </div>
     <div class="config-row">
       <label>Gist ID</label>
@@ -173,17 +183,17 @@ td.note-cell input{width:100%;min-width:120px;background:var(--bg2);border:1px s
   <div class="summary" id="summary-bdc"></div>
   <div class="btn-row">
     <button class="btn" onclick="addRow('bdc')">+ Add Ticker</button>
-    <button class="btn" onclick="removeRow('bdc')">− Remove Last</button>
   </div>
   <div class="twrap"><table id="table-bdc">
     <thead><tr>
       <th data-col="ticker">Ticker</th>
       <th data-col="price">Price</th>
       <th data-col="limit">Limit</th>
-      <th data-col="target">Target</th>
       <th data-col="limitDiff">Limit Diff</th>
+      <th data-col="target">Target</th>
       <th data-col="upside">Upside</th>
       <th data-col="note">Notes</th>
+      <th></th>
     </tr></thead>
     <tbody></tbody>
   </table></div>
@@ -195,7 +205,6 @@ td.note-cell input{width:100%;min-width:120px;background:var(--bg2);border:1px s
   <div class="summary" id="summary-natres"></div>
   <div class="btn-row">
     <button class="btn" onclick="addRow('natres')">+ Add Ticker</button>
-    <button class="btn" onclick="removeRow('natres')">− Remove Last</button>
   </div>
   <div class="twrap"><table id="table-natres">
     <thead><tr>
@@ -204,6 +213,7 @@ td.note-cell input{width:100%;min-width:120px;background:var(--bg2);border:1px s
       <th data-col="limit">Limit</th>
       <th data-col="limitDiff">Limit Diff</th>
       <th data-col="note">Notes</th>
+      <th></th>
     </tr></thead>
     <tbody></tbody>
   </table></div>
@@ -213,7 +223,7 @@ td.note-cell input{width:100%;min-width:120px;background:var(--bg2);border:1px s
 
 <script>
 // ══════════════════════════════════════════════════════════════════
-//  DATA STORE
+//  DATA
 // ══════════════════════════════════════════════════════════════════
 
 const DEFAULT_BDC = [
@@ -229,9 +239,9 @@ const DEFAULT_BDC = [
   { ticker:"TRIN", limit:12.79, target:15.75, note:"" },
   { ticker:"CSWC", limit:17.62, target:23.00, note:"" },
   { ticker:"MAIN", limit:45.73, target:54.00, note:"" },
-  { ticker:"GBDC", limit:0,     target:14.00, note:"" },
-  { ticker:"NCDL", limit:0,     target:14.00, note:"" },
-  { ticker:"PFLT", limit:0,     target:10.00, note:"" },
+  { ticker:"GBDC", limit:0, target:14.00, note:"no current order" },
+  { ticker:"NCDL", limit:0, target:14.00, note:"" },
+  { ticker:"PFLT", limit:0, target:10.00, note:"" },
   { ticker:"GAIN", limit:11.34, target:14.00, note:"watchlist" },
 ];
 
@@ -243,14 +253,17 @@ const DEFAULT_NATRES = [
   { ticker:"CNQ",   limit:36.50, note:"" },
   { ticker:"COAL",  limit:22.75, note:"" },
   { ticker:"COP.U", limit:8.35, note:"" },
+  { ticker:"CTM",   limit:0, note:"Centaurus Metals — check broker" },
   { ticker:"CTTZF", limit:0.32, note:"" },
   { ticker:"CVX",   limit:155.00, note:"no current order" },
   { ticker:"DVN",   limit:41.00, note:"" },
+  { ticker:"ECOR",  limit:0, note:"Ecora Royalties — check broker" },
   { ticker:"EQX",   limit:12.00, note:"" },
   { ticker:"GLGDF", limit:1.65, note:"no current order" },
   { ticker:"GLNCY", limit:11.50, note:"" },
   { ticker:"GMINF", limit:24.00, note:"" },
   { ticker:"IVPAF", limit:8.50, note:"no current order" },
+  { ticker:"MEI",   limit:0, note:"Meteoric Resources — check broker" },
   { ticker:"METOF", limit:0.09, note:"" },
   { ticker:"MGMNF", limit:1.58, note:"no current order" },
   { ticker:"MUNMF", limit:0.22, note:"" },
@@ -264,6 +277,7 @@ const DEFAULT_NATRES = [
   { ticker:"RIOFF", limit:1.55, note:"" },
   { ticker:"SBSW",  limit:11.56, note:"no current order" },
   { ticker:"SILJ",  limit:22.50, note:"" },
+  { ticker:"SLP",   limit:0, note:"Sylvania Platinum — check broker" },
   { ticker:"SRUUF", limit:16.51, note:"" },
   { ticker:"TLOFF", limit:4.63, note:"no current order" },
   { ticker:"UEC",   limit:9.51, note:"" },
@@ -273,11 +287,41 @@ const DEFAULT_NATRES = [
   { ticker:"XOM",   limit:124.23, note:"" },
 ];
 
+// Tickers known to work on Twelve Data free tier — fetch from TD first to save Finnhub calls
+const TWELVE_DATA_TICKERS = new Set(['ARREF','AYASF','BHP','BYAGF','CNQ','COAL','CTTZF']);
+
 let DATA = { bdc: [], natres: [] };
 let PRICES = { bdc: {}, natres: {} };
-let SORT = { bdc: { col: null, dir: 'asc' }, natres: { col: null, dir: 'asc' } };
+let SORT = { bdc: { col: 'limitDiff', dir: 'asc' }, natres: { col: 'limitDiff', dir: 'asc' } };
 let activeTab = 'bdc';
 let gistSyncTimer = null;
+
+// ══════════════════════════════════════════════════════════════════
+//  MARKET STATUS
+// ══════════════════════════════════════════════════════════════════
+
+function getMarketStatus() {
+  const now = new Date();
+  const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const day = et.getDay();
+  const h = et.getHours();
+  const m = et.getMinutes();
+  const mins = h * 60 + m;
+
+  if (day === 0 || day === 6) return { status: 'closed', label: 'Weekend — Closed' };
+  if (mins >= 570 && mins < 960) return { status: 'live', label: 'Market Open' };
+  if (mins >= 960 && mins < 1200) return { status: 'after', label: 'After Hours' };
+  if (mins >= 240 && mins < 570) return { status: 'after', label: 'Pre-Market' };
+  return { status: 'closed', label: 'Market Closed' };
+}
+
+function updateMarketStatus() {
+  const ms = getMarketStatus();
+  const dot = document.getElementById('mktDot');
+  const txt = document.getElementById('mktText');
+  dot.className = 'dot ' + ms.status;
+  txt.textContent = ms.label;
+}
 
 // ══════════════════════════════════════════════════════════════════
 //  CONFIG / LOCAL STORAGE
@@ -296,17 +340,11 @@ function loadConfig() {
 }
 
 function saveConfig() {
-  lsSet('cfg_finnhub',   document.getElementById('finnhubKey').value.trim());
-  lsSet('cfg_twelve',    document.getElementById('twelveKey').value.trim());
-  lsSet('cfg_gist_token',document.getElementById('gistToken').value.trim());
-  lsSet('cfg_gist_id',   document.getElementById('gistId').value.trim());
+  lsSet('cfg_finnhub',    document.getElementById('finnhubKey').value.trim());
+  lsSet('cfg_twelve',     document.getElementById('twelveKey').value.trim());
+  lsSet('cfg_gist_token', document.getElementById('gistToken').value.trim());
+  lsSet('cfg_gist_id',    document.getElementById('gistId').value.trim());
   showSync('Config saved ✓');
-  // Migrate old finnhub key if present
-  const oldKey = lsGet('finnhub_api_key');
-  if (oldKey && !document.getElementById('finnhubKey').value.trim()) {
-    lsSet('cfg_finnhub', oldKey);
-    document.getElementById('finnhubKey').value = oldKey;
-  }
 }
 
 function populateConfigFields() {
@@ -315,7 +353,7 @@ function populateConfigFields() {
   document.getElementById('twelveKey').value = c.twelveKey;
   document.getElementById('gistToken').value = c.gistToken;
   document.getElementById('gistId').value = c.gistId;
-  // Migrate old key
+  // Migrate old key from previous dashboard version
   if (!c.finnhubKey) {
     const old = lsGet('finnhub_api_key');
     if (old) { document.getElementById('finnhubKey').value = old; lsSet('cfg_finnhub', old); }
@@ -336,21 +374,18 @@ async function syncToGist() {
   try {
     let res;
     if (cfg.gistId) {
-      // Update existing gist
       res = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
         method: 'PATCH',
         headers: { 'Authorization': `token ${cfg.gistToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ files })
       });
     } else {
-      // Create new gist
       res = await fetch('https://api.github.com/gists', {
         method: 'POST',
         headers: { 'Authorization': `token ${cfg.gistToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: 'Limit Order Command Center Data', public: false, files })
+        body: JSON.stringify({ description: 'Limit Orders Data', public: false, files })
       });
     }
-
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!cfg.gistId && data.id) {
@@ -366,7 +401,6 @@ async function syncToGist() {
 async function loadFromGist() {
   const cfg = loadConfig();
   if (!cfg.gistToken || !cfg.gistId) return false;
-
   try {
     const res = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
       headers: { 'Authorization': `token ${cfg.gistToken}` }
@@ -386,14 +420,11 @@ async function loadFromGist() {
   }
 }
 
-async function testSync() {
-  saveConfig();
-  await syncToGist();
-}
+async function testSync() { saveConfig(); await syncToGist(); }
 
 function debouncedSync() {
   if (gistSyncTimer) clearTimeout(gistSyncTimer);
-  gistSyncTimer = setTimeout(syncToGist, 3000); // 3s debounce
+  gistSyncTimer = setTimeout(syncToGist, 3000);
 }
 
 function showSync(msg, isError) {
@@ -406,24 +437,25 @@ function showSync(msg, isError) {
 //  PRICE FETCHING
 // ══════════════════════════════════════════════════════════════════
 
-async function fetchBdcPrices() {
+async function fetchFinnhub(tickers, target) {
   const cfg = loadConfig();
-  if (!cfg.finnhubKey) return;
-  const tickers = DATA.bdc.map(r => r.ticker);
-  const promises = tickers.map(t =>
-    fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t)}&token=${cfg.finnhubKey}`)
-      .then(r => r.json())
-      .then(d => { if (d.c) PRICES.bdc[t] = d.c; })
-      .catch(() => {})
-  );
-  await Promise.all(promises);
+  if (!cfg.finnhubKey || !tickers.length) return;
+  // Stagger to stay under 60/min
+  for (let i = 0; i < tickers.length; i++) {
+    const t = tickers[i];
+    try {
+      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t)}&token=${cfg.finnhubKey}`);
+      const d = await res.json();
+      if (d && d.c && d.c > 0) target[t] = d.c;
+    } catch(e) {}
+    // Small delay every 10 calls to avoid burst limits
+    if (i > 0 && i % 10 === 0) await new Promise(r => setTimeout(r, 200));
+  }
 }
 
-async function fetchNatresPrices() {
+async function fetchTwelveData(tickers, target) {
   const cfg = loadConfig();
-  if (!cfg.twelveKey) return;
-  const tickers = DATA.natres.map(r => r.ticker);
-  // Twelve Data allows batch — up to 8 per call on free tier
+  if (!cfg.twelveKey || !tickers.length) return;
   const batchSize = 8;
   for (let i = 0; i < tickers.length; i += batchSize) {
     const batch = tickers.slice(i, i + batchSize);
@@ -432,36 +464,54 @@ async function fetchNatresPrices() {
       const res = await fetch(`https://api.twelvedata.com/price?symbol=${encodeURIComponent(symbols)}&apikey=${cfg.twelveKey}`);
       const data = await res.json();
       if (batch.length === 1) {
-        // Single symbol returns { price: "..." }
-        if (data.price) PRICES.natres[batch[0]] = parseFloat(data.price);
+        if (data.price) target[batch[0]] = parseFloat(data.price);
       } else {
-        // Multiple returns { TICKER: { price: "..." }, ... }
         for (const sym of batch) {
-          if (data[sym] && data[sym].price) {
-            PRICES.natres[sym] = parseFloat(data[sym].price);
-          }
+          if (data[sym] && data[sym].price) target[sym] = parseFloat(data[sym].price);
         }
       }
-    } catch (e) { console.error('Twelve Data batch error:', e); }
-    // Small delay between batches to respect rate limits
+    } catch(e) {}
     if (i + batchSize < tickers.length) await new Promise(r => setTimeout(r, 500));
   }
 }
 
-async function refreshAll() {
-  const dot = document.getElementById('statusDot');
-  const txt = document.getElementById('statusText');
-  dot.className = 'dot'; txt.textContent = 'Refreshing...';
+async function fetchAllPrices() {
+  // BDC: all via Finnhub
+  const bdcTickers = DATA.bdc.map(r => r.ticker);
+  await fetchFinnhub(bdcTickers, PRICES.bdc);
 
+  // NatRes: split between Twelve Data (known working) and Finnhub (everything else)
+  const natresTD = DATA.natres.filter(r => TWELVE_DATA_TICKERS.has(r.ticker)).map(r => r.ticker);
+  const natresFH = DATA.natres.filter(r => !TWELVE_DATA_TICKERS.has(r.ticker)).map(r => r.ticker);
+
+  // Fetch Twelve Data tickers first
+  await fetchTwelveData(natresTD, PRICES.natres);
+
+  // Fetch remaining via Finnhub
+  await fetchFinnhub(natresFH, PRICES.natres);
+
+  // Fallback: any NatRes tickers Finnhub missed, try Twelve Data
+  const missing = DATA.natres
+    .filter(r => !PRICES.natres[r.ticker] && !TWELVE_DATA_TICKERS.has(r.ticker))
+    .map(r => r.ticker);
+  if (missing.length > 0) {
+    await fetchTwelveData(missing, PRICES.natres);
+  }
+}
+
+async function refreshAll() {
+  updateMarketStatus();
   try {
-    await Promise.all([fetchBdcPrices(), fetchNatresPrices()]);
-    dot.className = 'dot live'; txt.textContent = 'Live';
+    await fetchAllPrices();
     renderTab(activeTab);
     const now = new Date();
     document.getElementById('lastUpdate').textContent =
-      `Updated ${now.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', second:'2-digit', hour12:true })} ET`;
-  } catch (e) {
-    dot.className = 'dot err'; txt.textContent = 'Error';
+      `Last updated: ${now.toLocaleString('en-US', {
+        timeZone:'America/New_York', month:'short', day:'numeric',
+        hour:'numeric', minute:'2-digit', second:'2-digit', hour12:true
+      })} ET`;
+  } catch(e) {
+    console.error('Refresh error:', e);
   }
 }
 
@@ -474,6 +524,14 @@ function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
   document.getElementById('panel-' + tab).style.display = '';
+  // Update header title
+  if (tab === 'bdc') {
+    document.querySelector('.header h1').innerHTML = 'BDC <span class="accent">LIMIT ORDERS</span>';
+  } else if (tab === 'natres') {
+    document.querySelector('.header h1').innerHTML = 'NATURAL RESOURCES <span class="accent">LIMIT ORDERS</span>';
+  } else {
+    document.querySelector('.header h1').innerHTML = '<span class="accent">SETTINGS</span>';
+  }
   if (tab !== 'config') renderTab(tab);
 }
 
@@ -484,118 +542,163 @@ function renderTab(tab) {
   const alertsEl = document.getElementById(`alerts-${tab}`);
   const summaryEl = document.getElementById(`summary-${tab}`);
 
-  // Sort
+  // Sort — items with no limit (0) always go to bottom
   const s = SORT[tab];
   let sorted = [...rows];
   if (s.col) {
     sorted.sort((a, b) => {
+      const aNoLimit = !a.limit;
+      const bNoLimit = !b.limit;
+      // No-limit rows always at bottom
+      if (aNoLimit && !bNoLimit) return 1;
+      if (!aNoLimit && bNoLimit) return -1;
+      if (aNoLimit && bNoLimit) return a.ticker.localeCompare(b.ticker);
+
       let va = getSortVal(a, s.col, prices, tab);
       let vb = getSortVal(b, s.col, prices, tab);
       if (typeof va === 'string') return s.dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-      if (isNaN(va)) va = -Infinity; if (isNaN(vb)) vb = -Infinity;
+      // Push NaN/no-price to bottom within sorted group
+      const aValid = isFinite(va);
+      const bValid = isFinite(vb);
+      if (!aValid && bValid) return 1;
+      if (aValid && !bValid) return -1;
+      if (!aValid && !bValid) return 0;
       return s.dir === 'asc' ? va - vb : vb - va;
     });
   }
 
-  // Alerts
-  const hot = [], warm = [], above = [];
+  // Compute stats
+  const hot = [], warm = [], nearTarget = [];
   for (const r of rows) {
     const p = prices[r.ticker];
     if (!p || !r.limit) continue;
     const diff = (p - r.limit) / r.limit;
     if (diff <= 0) hot.push(r.ticker);
-    else if (diff < 0.03) warm.push(r.ticker);
+    else if (diff < 0.05) warm.push(r.ticker);
   }
-  // Above target
   if (tab === 'bdc') {
     for (const r of rows) {
       const p = prices[r.ticker];
-      if (p && r.target && p >= r.target) above.push(r.ticker);
+      if (p && r.target && r.target > 0) {
+        const pct = (r.target - p) / p;
+        if (pct <= 0.05 && pct >= -0.05) nearTarget.push(r.ticker);
+      }
     }
   }
 
+  // Avg upside (BDC) or avg limit diff
+  let avgStat = null, avgRange = '';
+  if (tab === 'bdc') {
+    const upsides = rows.filter(r => prices[r.ticker] && r.target).map(r => (r.target - prices[r.ticker]) / prices[r.ticker] * 100);
+    if (upsides.length) {
+      avgStat = (upsides.reduce((a,b)=>a+b,0) / upsides.length);
+      avgRange = `${Math.min(...upsides).toFixed(1)}% — ${Math.max(...upsides).toFixed(1)}%`;
+    }
+  } else {
+    const diffs = rows.filter(r => prices[r.ticker] && r.limit).map(r => (prices[r.ticker] - r.limit) / r.limit * 100);
+    if (diffs.length) {
+      avgStat = (diffs.reduce((a,b)=>a+b,0) / diffs.length);
+      avgRange = `${Math.min(...diffs).toFixed(1)}% — ${Math.max(...diffs).toFixed(1)}%`;
+    }
+  }
+
+  // Alerts
   let alertsHtml = '';
-  hot.forEach(t => alertsHtml += `<span class="pill hot">● ${t} AT/BELOW LIMIT</span>`);
-  warm.forEach(t => alertsHtml += `<span class="pill warm">● ${t} within 3%</span>`);
-  above.forEach(t => alertsHtml += `<span class="pill above">▲ ${t} above target</span>`);
+  hot.forEach(t => alertsHtml += `<span class="pill hot">● ${t} at or below limit — check broker</span>`);
+  warm.forEach(t => alertsHtml += `<span class="pill warm">◉ ${t} within 5% of limit — approaching buy zone</span>`);
+  nearTarget.forEach(t => alertsHtml += `<span class="pill near-target">▲ ${t} near target</span>`);
   alertsEl.innerHTML = alertsHtml;
 
-  // Summary
+  // Summary cards
   const totalTickers = rows.length;
   const priced = rows.filter(r => prices[r.ticker]).length;
-  const atLimit = hot.length;
-  const nearLimit = warm.length;
-  summaryEl.innerHTML = `
-    <div class="scard"><div class="sl">Tickers</div><div class="sv">${totalTickers}</div></div>
-    <div class="scard"><div class="sl">Priced</div><div class="sv">${priced}/${totalTickers}</div></div>
-    <div class="scard"><div class="sl">At/Below Limit</div><div class="sv" style="color:${atLimit?'var(--red)':'var(--t1)'}">${atLimit}</div></div>
-    <div class="scard"><div class="sl">Within 3%</div><div class="sv" style="color:${nearLimit?'var(--amber)':'var(--t1)'}">${nearLimit}</div></div>
-  `;
+  let summaryHtml = '';
+  if (tab === 'bdc') {
+    summaryHtml += `<div class="scard"><div class="sl">Avg Upside to Target</div><div class="sv" style="color:var(--green)">${avgStat !== null ? (avgStat >= 0 ? '+' : '') + avgStat.toFixed(1) + '%' : '—'}</div><div class="sd">${avgRange}</div></div>`;
+  } else {
+    summaryHtml += `<div class="scard"><div class="sl">Avg Distance to Limit</div><div class="sv">${avgStat !== null ? (avgStat >= 0 ? '+' : '') + avgStat.toFixed(1) + '%' : '—'}</div><div class="sd">${avgRange}</div></div>`;
+  }
+  summaryHtml += `<div class="scard"><div class="sl">At or Below Limit</div><div class="sv" style="color:${hot.length ? 'var(--green)' : 'var(--t1)'}">${hot.length}</div><div class="sd">${hot.length ? hot.join(', ') : 'None right now'}</div></div>`;
+  summaryHtml += `<div class="scard"><div class="sl">Within 5% of Limit</div><div class="sv" style="color:${warm.length ? 'var(--amber)' : 'var(--t1)'}">${warm.length}</div><div class="sd">${warm.length ? warm.join(', ') : ''}</div></div>`;
+  if (tab === 'bdc') {
+    summaryHtml += `<div class="scard"><div class="sl">Near Target (±5%)</div><div class="sv">${nearTarget.length}</div><div class="sd">${nearTarget.length ? nearTarget.join(', ') : ''}</div></div>`;
+  }
+  summaryHtml += `<div class="scard"><div class="sl">Priced</div><div class="sv">${priced}/${totalTickers}</div></div>`;
+  summaryEl.innerHTML = summaryHtml;
 
-  // Table
+  // Table rows
   let html = '';
   for (let i = 0; i < sorted.length; i++) {
     const r = sorted[i];
-    const idx = rows.indexOf(r); // original index for editing
+    const idx = rows.indexOf(r);
     const p = prices[r.ticker] || null;
     const limit = r.limit || 0;
     const limitDiff = (p && limit) ? ((p - limit) / limit * 100) : null;
     const limitDiffStr = limitDiff !== null ? (limitDiff >= 0 ? '+' : '') + limitDiff.toFixed(1) + '%' : '—';
-    const ldClass = limitDiff !== null ? (limitDiff <= 0 ? 'down' : limitDiff < 3 ? 'up' : 'flat') : 'flat';
 
-    // Row highlight if at or below limit
-    const rowStyle = (p && limit && p <= limit) ? 'background:var(--red-bg)' : '';
+    // Color logic: green if at/below limit, amber if within 5%, neutral otherwise
+    let ldClass = 'no-data';
+    let rowClass = '';
+    if (limitDiff !== null) {
+      if (limitDiff <= 0) { ldClass = 'at-limit'; rowClass = 'row-at-limit'; }
+      else if (limitDiff < 5) { ldClass = 'near-limit'; rowClass = 'row-near-limit'; }
+      else { ldClass = 'far-limit'; }
+    }
 
     if (tab === 'bdc') {
       const target = r.target || 0;
       const upside = (p && target) ? ((target - p) / p * 100) : null;
       const upsideStr = upside !== null ? (upside >= 0 ? '+' : '') + upside.toFixed(1) + '%' : '—';
-      const uClass = upside !== null ? (upside > 0 ? 'up' : 'down') : 'flat';
+      const uClass = upside !== null ? (upside > 0 ? 'up' : 'down') : 'no-data';
 
-      html += `<tr style="${rowStyle}">
-        <td class="ticker-name">${r.ticker}</td>
-        <td>${p ? '$' + fmtP(p) : '<span class="flat">—</span>'}</td>
-        <td class="editable" onclick="startEdit(this,'bdc',${idx},'limit')">${limit ? '$' + fmtP(limit) : '—'}</td>
-        <td class="editable" onclick="startEdit(this,'bdc',${idx},'target')">${target ? '$' + fmtP(target) : '—'}</td>
+      html += `<tr class="${rowClass}">
+        <td class="ticker-name">${esc(r.ticker)}</td>
+        <td>${p ? '$' + fmtP(p) : '<span class="no-data">—</span>'}</td>
+        <td class="editable" onclick="startEdit(this,'bdc',${idx},'limit')">${limit ? '$' + fmtP(limit) : '<span class="no-data">—</span>'}</td>
         <td class="${ldClass}">${limitDiffStr}</td>
+        <td class="editable" onclick="startEdit(this,'bdc',${idx},'target')">${target ? '$' + fmtP(target) : '<span class="no-data">—</span>'}</td>
         <td class="${uClass}">${upsideStr}</td>
         <td class="note-cell editable" onclick="startEditNote(this,'bdc',${idx})">${noteSpan(r.note)}</td>
+        <td><button class="btn-del" onclick="deleteRow('bdc',${idx})" title="Delete">✕</button></td>
       </tr>`;
     } else {
-      html += `<tr style="${rowStyle}">
-        <td class="ticker-name">${r.ticker}</td>
-        <td>${p ? '$' + fmtP(p) : '<span class="flat">—</span>'}</td>
-        <td class="editable" onclick="startEdit(this,'natres',${idx},'limit')">${limit ? '$' + fmtP(limit) : '—'}</td>
+      html += `<tr class="${rowClass}">
+        <td class="ticker-name">${esc(r.ticker)}</td>
+        <td>${p ? '$' + fmtP(p) : '<span class="no-data">—</span>'}</td>
+        <td class="editable" onclick="startEdit(this,'natres',${idx},'limit')">${limit ? '$' + fmtP(limit) : '<span class="no-data">—</span>'}</td>
         <td class="${ldClass}">${limitDiffStr}</td>
         <td class="note-cell editable" onclick="startEditNote(this,'natres',${idx})">${noteSpan(r.note)}</td>
+        <td><button class="btn-del" onclick="deleteRow('natres',${idx})" title="Delete">✕</button></td>
       </tr>`;
     }
   }
   tbody.innerHTML = html;
 
-  // Column sort listeners
+  // Sort headers
   document.querySelectorAll(`#table-${tab} thead th`).forEach(th => {
+    const col = th.dataset.col;
+    if (!col) return;
     th.onclick = () => {
-      const col = th.dataset.col;
-      if (!col) return;
       if (s.col === col) s.dir = s.dir === 'asc' ? 'desc' : 'asc';
       else { s.col = col; s.dir = 'asc'; }
       document.querySelectorAll(`#table-${tab} thead th`).forEach(t => t.classList.remove('asc','desc'));
       th.classList.add(s.dir);
       renderTab(tab);
     };
+    // Show current sort indicator
+    if (s.col === col) th.classList.add(s.dir);
   });
 }
 
-function getSortVal(row, col, prices, tab) {
+function getSortVal(row, col, prices) {
   const p = prices[row.ticker] || 0;
   switch(col) {
     case 'ticker': return row.ticker;
-    case 'price': return p;
-    case 'limit': return row.limit || 0;
-    case 'target': return row.target || 0;
-    case 'limitDiff': return (p && row.limit) ? (p - row.limit) / row.limit : -999;
-    case 'upside': return (p && row.target) ? (row.target - p) / p : -999;
+    case 'price': return p || Infinity;
+    case 'limit': return row.limit || Infinity;
+    case 'target': return row.target || Infinity;
+    case 'limitDiff': return (p && row.limit) ? (p - row.limit) / row.limit : Infinity;
+    case 'upside': return (p && row.target) ? (row.target - p) / p : Infinity;
     case 'note': return row.note || '';
     default: return 0;
   }
@@ -608,25 +711,23 @@ function fmtP(v) {
 }
 
 function noteSpan(n) {
-  return n ? `<span class="note-text has-note">${escHtml(n)}</span>`
+  return n ? `<span class="note-text has-note">${esc(n)}</span>`
            : `<span class="note-text">click to add note</span>`;
 }
 
-function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ══════════════════════════════════════════════════════════════════
-//  INLINE EDITING
+//  EDITING
 // ══════════════════════════════════════════════════════════════════
 
 function startEdit(td, tab, idx, field) {
   if (td.querySelector('input')) return;
   const val = DATA[tab][idx][field] || '';
-  const orig = td.innerHTML;
   td.innerHTML = `<input type="text" value="${val}" autofocus>`;
   const input = td.querySelector('input');
   input.focus();
   input.select();
-
   const commit = () => {
     const nv = parseFloat(input.value);
     if (!isNaN(nv) && nv >= 0) {
@@ -636,7 +737,6 @@ function startEdit(td, tab, idx, field) {
     }
     renderTab(tab);
   };
-
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') commit();
@@ -647,17 +747,15 @@ function startEdit(td, tab, idx, field) {
 function startEditNote(td, tab, idx) {
   if (td.querySelector('input')) return;
   const val = DATA[tab][idx].note || '';
-  td.innerHTML = `<input type="text" value="${escHtml(val)}" placeholder="Add note..." autofocus>`;
+  td.innerHTML = `<input type="text" value="${esc(val)}" placeholder="Add note..." autofocus>`;
   const input = td.querySelector('input');
   input.focus();
-
   const commit = () => {
     DATA[tab][idx].note = input.value.trim();
     saveLocal();
     debouncedSync();
     renderTab(tab);
   };
-
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') commit();
@@ -666,7 +764,7 @@ function startEditNote(td, tab, idx) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  ADD / REMOVE ROWS
+//  ADD / DELETE ROWS
 // ══════════════════════════════════════════════════════════════════
 
 function addRow(tab) {
@@ -684,15 +782,24 @@ function addRow(tab) {
   renderTab(tab);
 }
 
-function removeRow(tab) {
-  if (!DATA[tab].length) return;
-  const last = DATA[tab][DATA[tab].length - 1];
-  if (confirm(`Remove ${last.ticker}?`)) {
-    DATA[tab].pop();
+function deleteRow(tab, idx) {
+  const ticker = DATA[tab][idx].ticker;
+  if (confirm(`Delete ${ticker}?`)) {
+    DATA[tab].splice(idx, 1);
     saveLocal();
     debouncedSync();
     renderTab(tab);
   }
+}
+
+function resetAllData() {
+  if (!confirm('Reset all data to defaults? This will overwrite your current orders.')) return;
+  DATA.bdc = JSON.parse(JSON.stringify(DEFAULT_BDC));
+  DATA.natres = JSON.parse(JSON.stringify(DEFAULT_NATRES));
+  saveLocal();
+  debouncedSync();
+  renderTab(activeTab);
+  showSync('Reset to defaults ✓');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -710,7 +817,6 @@ function exportData() {
 function importData() {
   const file = document.getElementById('importFile').files[0];
   if (!file) { alert('Select a file first'); return; }
-
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = e.target.result;
@@ -735,41 +841,35 @@ function importCsv(text) {
   const lines = text.trim().split('\n').map(l => l.replace(/\r/g, ''));
   if (lines.length < 2) { alert('CSV appears empty'); return; }
   const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-
-  // Try to map columns
   const tickerCol = headers.findIndex(h => h.includes('tick'));
   const limitCol = headers.findIndex(h => h.includes('limit'));
   const targetCol = headers.findIndex(h => h.includes('target'));
   const noteCol = headers.findIndex(h => h.includes('note') || h.includes('column'));
-
   if (tickerCol === -1) { alert('Cannot find Ticker column in CSV'); return; }
-
   const hasTarget = targetCol !== -1;
   const tab = hasTarget ? 'bdc' : 'natres';
   const result = [];
-
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',').map(c => c.trim());
     const ticker = cols[tickerCol];
-    if (!ticker || ticker === '#N/A') continue;
+    if (!ticker || ticker === '#N/A' || ticker === '') continue;
     const row = { ticker: ticker.toUpperCase(), limit: 0, note: '' };
     if (limitCol !== -1) row.limit = parseFloat(cols[limitCol]) || 0;
     if (hasTarget) row.target = parseFloat(cols[targetCol]) || 0;
     if (noteCol !== -1) row.note = cols[noteCol] || '';
     result.push(row);
   }
-
   if (result.length) {
     DATA[tab] = result;
     saveLocal();
     debouncedSync();
     switchTab(tab);
-    showSync(`Imported ${result.length} rows into ${tab.toUpperCase()} ✓`);
+    showSync(`Imported ${result.length} rows into ${tab === 'bdc' ? 'BDC' : 'Natural Resources'} ✓`);
   }
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  LOCAL PERSISTENCE (fallback when no Gist)
+//  LOCAL PERSISTENCE
 // ══════════════════════════════════════════════════════════════════
 
 function saveLocal() {
@@ -784,7 +884,7 @@ function loadLocal() {
     if (bdc) DATA.bdc = JSON.parse(bdc);
     if (natres) DATA.natres = JSON.parse(natres);
     return !!(bdc || natres);
-  } catch (e) { return false; }
+  } catch(e) { return false; }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -793,8 +893,9 @@ function loadLocal() {
 
 async function init() {
   populateConfigFields();
+  updateMarketStatus();
+  setInterval(updateMarketStatus, 60000);
 
-  // Try loading data: Gist first, then localStorage, then defaults
   const fromGist = await loadFromGist();
   if (!fromGist) {
     const fromLocal = loadLocal();
@@ -805,13 +906,8 @@ async function init() {
     }
   }
 
-  // Render first with no prices
   renderTab('bdc');
-
-  // Then fetch prices
   await refreshAll();
-
-  // Hide loading
   document.getElementById('loading').classList.add('hide');
 
   // Auto-refresh every 5 minutes
