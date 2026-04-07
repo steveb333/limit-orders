@@ -440,17 +440,14 @@ function showSync(msg, isError) {
 async function fetchFinnhub(tickers, target) {
   const cfg = loadConfig();
   if (!cfg.finnhubKey || !tickers.length) return;
-  // Stagger to stay under 60/min
-  for (let i = 0; i < tickers.length; i++) {
-    const t = tickers[i];
-    try {
-      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t)}&token=${cfg.finnhubKey}`);
-      const d = await res.json();
-      if (d && d.c && d.c > 0) target[t] = d.c;
-    } catch(e) {}
-    // Small delay every 10 calls to avoid burst limits
-    if (i > 0 && i % 10 === 0) await new Promise(r => setTimeout(r, 200));
-  }
+  // Fire all in parallel — 51 tickers is under the 60/min limit
+  const promises = tickers.map(t =>
+    fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t)}&token=${cfg.finnhubKey}`)
+      .then(r => r.json())
+      .then(d => { if (d && d.c && d.c > 0) target[t] = d.c; })
+      .catch(() => {})
+  );
+  await Promise.all(promises);
 }
 
 async function fetchTwelveData(tickers, target) {
@@ -476,19 +473,17 @@ async function fetchTwelveData(tickers, target) {
 }
 
 async function fetchAllPrices() {
-  // BDC: all via Finnhub
-  const bdcTickers = DATA.bdc.map(r => r.ticker);
-  await fetchFinnhub(bdcTickers, PRICES.bdc);
-
-  // NatRes: split between Twelve Data (known working) and Finnhub (everything else)
+  // Split NatRes between Twelve Data (known working) and Finnhub (everything else)
   const natresTD = DATA.natres.filter(r => TWELVE_DATA_TICKERS.has(r.ticker)).map(r => r.ticker);
   const natresFH = DATA.natres.filter(r => !TWELVE_DATA_TICKERS.has(r.ticker)).map(r => r.ticker);
 
-  // Fetch Twelve Data tickers first
-  await fetchTwelveData(natresTD, PRICES.natres);
-
-  // Fetch remaining via Finnhub
-  await fetchFinnhub(natresFH, PRICES.natres);
+  // BDC (all Finnhub) + NatRes Finnhub + NatRes TwelveData — all in parallel
+  const bdcTickers = DATA.bdc.map(r => r.ticker);
+  await Promise.all([
+    fetchFinnhub(bdcTickers, PRICES.bdc),
+    fetchFinnhub(natresFH, PRICES.natres),
+    fetchTwelveData(natresTD, PRICES.natres),
+  ]);
 
   // Fallback: any NatRes tickers Finnhub missed, try Twelve Data
   const missing = DATA.natres
@@ -501,6 +496,10 @@ async function fetchAllPrices() {
 
 async function refreshAll() {
   updateMarketStatus();
+  const btn = document.querySelector('.hdr-right .btn:last-child');
+  btn.textContent = '↻ Refreshing...';
+  btn.style.opacity = '0.5';
+  btn.style.pointerEvents = 'none';
   try {
     await fetchAllPrices();
     renderTab(activeTab);
@@ -513,6 +512,9 @@ async function refreshAll() {
   } catch(e) {
     console.error('Refresh error:', e);
   }
+  btn.textContent = '↻ Refresh';
+  btn.style.opacity = '1';
+  btn.style.pointerEvents = 'auto';
 }
 
 // ══════════════════════════════════════════════════════════════════
