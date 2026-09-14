@@ -13,7 +13,7 @@
   --green: #22c55e; --green-bg: rgba(34,197,94,.08);
   --red: #ef4444; --red-bg: rgba(239,68,68,.08);
   --amber: #f59e0b; --amber-bg: rgba(245,158,11,.08);
-  --blue: #3b82f6; --cyan: #06b6d4; --gold: #d4a017;
+  --blue: #3b82f6; --cyan: #06b6d4; --gold: #d4a017; --purple: #a855f7;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg1);color:var(--t1);font-family:'DM Sans',sans-serif;min-height:100vh}
@@ -44,6 +44,8 @@ body{background:var(--bg1);color:var(--t1);font-family:'DM Sans',sans-serif;min-
 .pill.hot{background:var(--green-bg);color:var(--green);border:1px solid rgba(34,197,94,.2)}
 .pill.warm{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
 .pill.near-target{background:rgba(59,130,246,.08);color:var(--blue);border:1px solid rgba(59,130,246,.2)}
+.pill.sell-hot{background:rgba(168,85,247,.10);color:var(--purple);border:1px solid rgba(168,85,247,.3)}
+.pill.sell-warm{background:rgba(168,85,247,.05);color:#c4a5f5;border:1px solid rgba(168,85,247,.18)}
 
 /* ── CONFIG PANEL ── */
 .config{margin:12px 28px;padding:14px 18px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px}
@@ -95,13 +97,18 @@ td.note-cell input{width:100%;min-width:120px;background:var(--bg2);border:1px s
 .at-limit{color:var(--green);font-weight:600}
 .near-limit{color:var(--amber)}
 .far-limit{color:var(--t2)}
+.at-sell{color:var(--purple);font-weight:600}
+.near-sell{color:#c4a5f5}
 .no-data{color:var(--t3)}
+.manual-tag{color:var(--cyan);font-size:9px;margin-left:5px}
 .up{color:var(--green)}.down{color:var(--red)}
 .ticker-name{color:var(--t1);font-weight:600;font-size:13px}
 
 /* Row highlight */
 tr.row-at-limit{background:var(--green-bg)}
 tr.row-near-limit{background:var(--amber-bg)}
+tr.row-at-sell{background:rgba(168,85,247,.08)}
+tr.row-near-sell{background:rgba(168,85,247,.04)}
 
 /* ── LOADING ── */
 #loading{position:fixed;inset:0;background:var(--bg1);display:flex;align-items:center;justify-content:center;z-index:999;transition:opacity .3s}
@@ -198,8 +205,10 @@ tr.row-near-limit{background:var(--amber-bg)}
     <thead><tr>
       <th data-col="ticker">Ticker</th>
       <th data-col="price">Price</th>
-      <th data-col="limit">Limit</th>
-      <th data-col="limitDiff">Limit Diff</th>
+      <th data-col="limit">Buy Limit</th>
+      <th data-col="limitDiff">Buy Diff</th>
+      <th data-col="sell">Sell Limit</th>
+      <th data-col="sellDiff">Sell Diff</th>
       <th data-col="target">Target</th>
       <th data-col="upside">Upside</th>
       <th data-col="note">Notes</th>
@@ -220,8 +229,10 @@ tr.row-near-limit{background:var(--amber-bg)}
     <thead><tr>
       <th data-col="ticker">Ticker</th>
       <th data-col="price">Price</th>
-      <th data-col="limit">Limit</th>
-      <th data-col="limitDiff">Limit Diff</th>
+      <th data-col="limit">Buy Limit</th>
+      <th data-col="limitDiff">Buy Diff</th>
+      <th data-col="sell">Sell Limit</th>
+      <th data-col="sellDiff">Sell Diff</th>
       <th data-col="note">Notes</th>
       <th></th>
     </tr></thead>
@@ -820,18 +831,24 @@ function switchTab(tab) {
 
 function renderTab(tab) {
   const rows = DATA[tab];
-  const prices = PRICES[tab];
+  // Live feed prices, with manually entered prices filling tickers the feed doesn't cover
+  const prices = { ...PRICES[tab] };
+  for (const r of rows) if (!prices[r.ticker] && r.manualPrice) prices[r.ticker] = r.manualPrice;
+  const manualSet = new Set(rows.filter(r => !PRICES[tab][r.ticker] && r.manualPrice).map(r => r.ticker));
+  const tl = t => manualSet.has(t) ? `${t} ✎` : t;
   const tbody = document.querySelector(`#table-${tab} tbody`);
   const alertsEl = document.getElementById(`alerts-${tab}`);
   const summaryEl = document.getElementById(`summary-${tab}`);
 
-  // Sort — items with no limit (0) always go to bottom
+  // Sort — items with no limit (0) always go to bottom. When sorting by a
+  // sell column, "no limit" means no sell order; otherwise no buy order.
   const s = SORT[tab];
+  const pinKey = (s.col === 'sell' || s.col === 'sellDiff') ? 'sell' : 'limit';
   let sorted = [...rows];
   if (s.col) {
     sorted.sort((a, b) => {
-      const aNoLimit = !a.limit;
-      const bNoLimit = !b.limit;
+      const aNoLimit = !a[pinKey];
+      const bNoLimit = !b[pinKey];
       // No-limit rows always at bottom
       if (aNoLimit && !bNoLimit) return 1;
       if (!aNoLimit && bNoLimit) return -1;
@@ -851,13 +868,20 @@ function renderTab(tab) {
   }
 
   // Compute stats
-  const hot = [], warm = [], nearTarget = [];
+  const hot = [], warm = [], nearTarget = [], sellHot = [], sellWarm = [];
   for (const r of rows) {
     const p = prices[r.ticker];
     if (!p || !r.limit) continue;
     const diff = (p - r.limit) / r.limit;
     if (diff <= 0) hot.push(r.ticker);
     else if (diff < 0.05) warm.push(r.ticker);
+  }
+  for (const r of rows) {
+    const p = prices[r.ticker];
+    if (!p || !r.sell) continue;
+    const diff = (r.sell - p) / p;   // % rise still needed to reach the sell limit
+    if (diff <= 0) sellHot.push(r.ticker);
+    else if (diff < 0.05) sellWarm.push(r.ticker);
   }
   if (tab === 'bdc') {
     for (const r of rows) {
@@ -887,9 +911,11 @@ function renderTab(tab) {
 
   // Alerts
   let alertsHtml = '';
-  hot.forEach(t => alertsHtml += `<span class="pill hot">● ${t} at or below limit — check broker</span>`);
-  warm.forEach(t => alertsHtml += `<span class="pill warm">◉ ${t} within 5% of limit — approaching buy zone</span>`);
-  nearTarget.forEach(t => alertsHtml += `<span class="pill near-target">▲ ${t} near target</span>`);
+  hot.forEach(t => alertsHtml += `<span class="pill hot">● ${tl(t)} at or below limit — check broker</span>`);
+  warm.forEach(t => alertsHtml += `<span class="pill warm">◉ ${tl(t)} within 5% of limit — approaching buy zone</span>`);
+  sellHot.forEach(t => alertsHtml += `<span class="pill sell-hot">● ${tl(t)} at or above sell limit — check broker</span>`);
+  sellWarm.forEach(t => alertsHtml += `<span class="pill sell-warm">◉ ${tl(t)} within 5% of sell limit — approaching sell zone</span>`);
+  nearTarget.forEach(t => alertsHtml += `<span class="pill near-target">▲ ${tl(t)} near target</span>`);
   alertsEl.innerHTML = alertsHtml;
 
   // Summary cards
@@ -903,10 +929,12 @@ function renderTab(tab) {
   }
   summaryHtml += `<div class="scard"><div class="sl">At or Below Limit</div><div class="sv" style="color:${hot.length ? 'var(--green)' : 'var(--t1)'}">${hot.length}</div><div class="sd">${hot.length ? hot.join(', ') : 'None right now'}</div></div>`;
   summaryHtml += `<div class="scard"><div class="sl">Within 5% of Limit</div><div class="sv" style="color:${warm.length ? 'var(--amber)' : 'var(--t1)'}">${warm.length}</div><div class="sd">${warm.length ? warm.join(', ') : ''}</div></div>`;
+  summaryHtml += `<div class="scard"><div class="sl">At or Above Sell Limit</div><div class="sv" style="color:${sellHot.length ? 'var(--purple)' : 'var(--t1)'}">${sellHot.length}</div><div class="sd">${sellHot.length ? sellHot.join(', ') : 'None right now'}</div></div>`;
+  summaryHtml += `<div class="scard"><div class="sl">Within 5% of Sell</div><div class="sv" style="color:${sellWarm.length ? '#c4a5f5' : 'var(--t1)'}">${sellWarm.length}</div><div class="sd">${sellWarm.length ? sellWarm.join(', ') : ''}</div></div>`;
   if (tab === 'bdc') {
     summaryHtml += `<div class="scard"><div class="sl">Near Target (±5%)</div><div class="sv">${nearTarget.length}</div><div class="sd">${nearTarget.length ? nearTarget.join(', ') : ''}</div></div>`;
   }
-  summaryHtml += `<div class="scard"><div class="sl">Priced</div><div class="sv">${priced}/${totalTickers}</div></div>`;
+  summaryHtml += `<div class="scard"><div class="sl">Priced</div><div class="sv">${priced}/${totalTickers}</div><div class="sd">${manualSet.size ? manualSet.size + ' entered manually' : ''}</div></div>`;
   summaryEl.innerHTML = summaryHtml;
 
   // Table rows
@@ -928,6 +956,17 @@ function renderTab(tab) {
       else { ldClass = 'far-limit'; }
     }
 
+    // Sell side: positive = % rise still needed; <= 0 means at/above sell limit
+    const sell = r.sell || 0;
+    const sellDiff = (p && sell) ? ((sell - p) / p * 100) : null;
+    const sellDiffStr = sellDiff !== null ? (sellDiff >= 0 ? '+' : '') + sellDiff.toFixed(1) + '%' : '—';
+    let sdClass = 'no-data';
+    if (sellDiff !== null) {
+      if (sellDiff <= 0) { sdClass = 'at-sell'; if (!rowClass) rowClass = 'row-at-sell'; }
+      else if (sellDiff < 5) { sdClass = 'near-sell'; if (!rowClass) rowClass = 'row-near-sell'; }
+      else { sdClass = 'far-limit'; }
+    }
+
     if (tab === 'bdc') {
       const target = r.target || 0;
       const upside = (p && target) ? ((target - p) / p * 100) : null;
@@ -936,9 +975,11 @@ function renderTab(tab) {
 
       html += `<tr class="${rowClass}">
         <td class="ticker-name">${esc(r.ticker)}</td>
-        <td>${p ? '$' + fmtP(p) : '<span class="no-data">—</span>'}</td>
+        ${priceCell(tab, r, idx)}
         <td class="editable" onclick="startEdit(this,'bdc',${idx},'limit')">${limit ? '$' + fmtP(limit) : '<span class="no-data">—</span>'}</td>
         <td class="${ldClass}">${limitDiffStr}</td>
+        <td class="editable" onclick="startEdit(this,'bdc',${idx},'sell')">${sell ? '$' + fmtP(sell) : '<span class="no-data">—</span>'}</td>
+        <td class="${sdClass}">${sellDiffStr}</td>
         <td class="editable" onclick="startEdit(this,'bdc',${idx},'target')">${target ? '$' + fmtP(target) : '<span class="no-data">—</span>'}</td>
         <td class="${uClass}">${upsideStr}</td>
         <td class="note-cell editable" onclick="startEditNote(this,'bdc',${idx})">${noteSpan(r.note)}</td>
@@ -947,9 +988,11 @@ function renderTab(tab) {
     } else {
       html += `<tr class="${rowClass}">
         <td class="ticker-name">${esc(r.ticker)}</td>
-        <td>${p ? '$' + fmtP(p) : '<span class="no-data">—</span>'}</td>
+        ${priceCell(tab, r, idx)}
         <td class="editable" onclick="startEdit(this,'natres',${idx},'limit')">${limit ? '$' + fmtP(limit) : '<span class="no-data">—</span>'}</td>
         <td class="${ldClass}">${limitDiffStr}</td>
+        <td class="editable" onclick="startEdit(this,'natres',${idx},'sell')">${sell ? '$' + fmtP(sell) : '<span class="no-data">—</span>'}</td>
+        <td class="${sdClass}">${sellDiffStr}</td>
         <td class="note-cell editable" onclick="startEditNote(this,'natres',${idx})">${noteSpan(r.note)}</td>
         <td><button class="btn-del" onclick="deleteRow('natres',${idx})" title="Delete">✕</button></td>
       </tr>`;
@@ -981,6 +1024,8 @@ function getSortVal(row, col, prices) {
     case 'limit': return row.limit || Infinity;
     case 'target': return row.target || Infinity;
     case 'limitDiff': return (p && row.limit) ? (p - row.limit) / row.limit : Infinity;
+    case 'sell': return row.sell || Infinity;
+    case 'sellDiff': return (p && row.sell) ? (row.sell - p) / p : Infinity;
     case 'upside': return (p && row.target) ? (row.target - p) / p : Infinity;
     case 'note': return row.note || '';
     default: return 0;
@@ -991,6 +1036,28 @@ function fmtP(v) {
   if (v >= 100) return v.toFixed(2);
   if (v >= 1) return v.toFixed(2);
   return v.toFixed(v < 0.1 ? 4 : 3);
+}
+
+// Live price is read-only. With no live price the cell is editable and shows
+// the manual price (if any) with a ✎ tag and when it was entered.
+function priceCell(tab, r, idx) {
+  const live = PRICES[tab][r.ticker];
+  if (live) return `<td>$${fmtP(live)}</td>`;
+  const tip = r.manualPrice
+    ? `Price entered manually ${new Date(r.manualPriceAt).toLocaleString()} — click to change, clear to remove`
+    : 'No live price — click to enter one';
+  const body = r.manualPrice
+    ? `$${fmtP(r.manualPrice)}<span class="manual-tag">✎ ${fmtWhen(r.manualPriceAt)}</span>`
+    : '<span class="no-data">— ✎</span>';
+  return `<td class="editable" title="${esc(tip)}" onclick="startEditPrice(this,'${tab}',${idx})">${body}</td>`;
+}
+
+function fmtWhen(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return sameDay ? d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' })
+                 : d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
 }
 
 function noteSpan(n) {
@@ -1027,6 +1094,41 @@ function startEdit(td, tab, idx, field) {
   });
 }
 
+function startEditPrice(td, tab, idx) {
+  if (td.querySelector('input')) return;
+  const row = DATA[tab][idx];
+  td.innerHTML = `<input type="text" value="${row.manualPrice || ''}" placeholder="price">`;
+  const input = td.querySelector('input');
+  input.focus();
+  input.select();
+  let done = false;
+  const commit = () => {
+    if (done) return;
+    done = true;
+    const raw = input.value.trim();
+    const nv = parseFloat(raw.replace(/[$,]/g, ''));
+    if (raw === '' || nv === 0) {
+      if (row.manualPrice) {
+        delete row.manualPrice;
+        delete row.manualPriceAt;
+        saveLocal();
+        debouncedSync();
+      }
+    } else if (!isNaN(nv) && nv > 0 && nv !== row.manualPrice) {
+      row.manualPrice = nv;
+      row.manualPriceAt = new Date().toISOString();
+      saveLocal();
+      debouncedSync();
+    }
+    renderTab(tab);
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commit();
+    if (e.key === 'Escape') { done = true; renderTab(tab); }
+  });
+}
+
 function startEditNote(td, tab, idx) {
   if (td.querySelector('input')) return;
   const val = DATA[tab][idx].note || '';
@@ -1053,12 +1155,13 @@ function startEditNote(td, tab, idx) {
 function addRow(tab) {
   const ticker = prompt('Enter ticker symbol:');
   if (!ticker) return;
-  const limit = parseFloat(prompt('Limit order price (0 if none):') || '0');
+  const limit = parseFloat(prompt('Buy limit order price (0 if none):') || '0') || 0;
+  const sell = parseFloat(prompt('Sell limit order price (0 if none):') || '0') || 0;
   if (tab === 'bdc') {
-    const target = parseFloat(prompt('Target price (0 if none):') || '0');
-    DATA.bdc.push({ ticker: ticker.toUpperCase().trim(), limit, target, note: '' });
+    const target = parseFloat(prompt('Target price (0 if none):') || '0') || 0;
+    DATA.bdc.push({ ticker: ticker.toUpperCase().trim(), limit, sell, target, note: '' });
   } else {
-    DATA.natres.push({ ticker: ticker.toUpperCase().trim(), limit, note: '' });
+    DATA.natres.push({ ticker: ticker.toUpperCase().trim(), limit, sell, note: '' });
   }
   saveLocal();
   debouncedSync();
@@ -1126,7 +1229,8 @@ async function importCsv(text) {
   if (lines.length < 2) { alert('CSV appears empty'); return; }
   const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
   const tickerCol = headers.findIndex(h => h.includes('tick'));
-  const limitCol = headers.findIndex(h => h.includes('limit'));
+  const limitCol = headers.findIndex(h => h.includes('limit') && !h.includes('sell'));
+  const sellCol = headers.findIndex(h => h.includes('sell'));
   const targetCol = headers.findIndex(h => h.includes('target'));
   const noteCol = headers.findIndex(h => h.includes('note') || h.includes('column'));
   if (tickerCol === -1) { alert('Cannot find Ticker column in CSV'); return; }
@@ -1139,6 +1243,7 @@ async function importCsv(text) {
     if (!ticker || ticker === '#N/A' || ticker === '') continue;
     const row = { ticker: ticker.toUpperCase(), limit: 0, note: '' };
     if (limitCol !== -1) row.limit = parseFloat(cols[limitCol]) || 0;
+    if (sellCol !== -1) row.sell = parseFloat(cols[sellCol]) || 0;
     if (hasTarget) row.target = parseFloat(cols[targetCol]) || 0;
     if (noteCol !== -1) row.note = cols[noteCol] || '';
     result.push(row);
