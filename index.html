@@ -327,6 +327,7 @@ let SYNC = {
   rerunAfter: false, // edits arrived during an in-flight push
   baseVersion: null,
   etag: null,
+  lastFlushPayload: null, // content of our own unguarded close/hide flush
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -514,6 +515,7 @@ async function pushToGist() {
   SYNC.inFlight = true;
   setSyncState('saving', 'Saving…');
   try {
+    const payload = JSON.stringify({ bdc: DATA.bdc, natres: DATA.natres }, null, 2);
     let r;
     try {
       r = await gistGet(false);
@@ -529,10 +531,25 @@ async function pushToGist() {
       }
       // empty/absent file: safe to seed
     } else if (r.version && r.version !== SYNC.baseVersion) {
-      setSyncState('conflict', 'Remote changed — Pull to see latest, then re-edit');
-      return;
+      // The remote moved. That is only a real conflict if someone else moved
+      // it: our own hide/close flush (flushPush) also creates a new version.
+      const rc = r.file ? (r.file.content || '') : '';
+      if (rc === payload) {
+        // Remote already holds exactly what we would push — nothing to do.
+        SYNC.baseVersion = r.version;
+        SYNC.etag = r.etag || SYNC.etag;
+        SYNC.dirty = false;
+        SYNC.lastFlushPayload = null;
+        saveSyncMeta();
+        setSyncState('synced', 'Synced ✓ ' + nowTime());
+        return;
+      }
+      if (SYNC.lastFlushPayload == null || rc !== SYNC.lastFlushPayload) {
+        setSyncState('conflict', 'Remote changed — Pull to see latest, then re-edit');
+        return;
+      }
+      // Remote is our own earlier flush; local has newer edits — safe to push.
     }
-    const payload = JSON.stringify({ bdc: DATA.bdc, natres: DATA.natres }, null, 2);
     const pres = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
       method: 'PATCH',
       headers: { 'Authorization': `token ${cfg.gistToken}`, 'Content-Type': 'application/json' },
@@ -546,6 +563,7 @@ async function pushToGist() {
       ? updated.history[0].version : SYNC.baseVersion;
     SYNC.etag = pres.headers.get('ETag') || SYNC.etag;
     SYNC.dirty = false;
+    SYNC.lastFlushPayload = null;
     saveSyncMeta();
     setSyncState('synced', 'Synced ✓ ' + nowTime());
   } catch (e) {
@@ -593,18 +611,25 @@ async function pollGist() {
 // Best-effort close-tab flush. keepalive lets the request outlive the page;
 // no conflict guard (no time to chain GET→PATCH). saveLocal already protected
 // the data on this device, so the worst case is a recoverable last-writer-wins.
+//
+// The flushed content is remembered in SYNC.lastFlushPayload so the next
+// guarded push recognises the resulting new Gist version as our own instead
+// of reporting a false "Remote changed" conflict. A known conflict is never
+// flushed: that would silently overwrite the other device's change.
 function flushPush() {
   if (!SYNC.dirty) return;
+  if (SYNC.state === 'conflict') return;
   const cfg = loadConfig();
   if (!cfg.gistToken || !cfg.gistId) return;
   const payload = JSON.stringify({ bdc: DATA.bdc, natres: DATA.natres }, null, 2);
+  SYNC.lastFlushPayload = payload;
   try {
     fetch(`https://api.github.com/gists/${cfg.gistId}`, {
       method: 'PATCH',
       keepalive: true,
       headers: { 'Authorization': `token ${cfg.gistToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ files: { 'limit_orders.json': { content: payload } } })
-    });
+    }).catch(() => {});
   } catch (e) {}
 }
 
